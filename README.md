@@ -1,5 +1,8 @@
 # IA2C
 Code for paper:
+
 Keyang He, Bikramjit Banerjee, and Prashant Doshi. Cooperative-Competitive Reinforcement Learning with History-Dependent Rewards. In Proceedings of the 20th International Conference on Autonomous Agents and Multiagent Systems (AAMAS 2021), pp. 602–610, 2021. https://sites.usm.edu/banerjee/papers/p602.pdf
+
 Also part of paper: 
+
 Keyang He, Prashant Doshi, and Bikramjit Banerjee. Modeling and reinforcement learning in partially observable many-agent systems. In Autonomous Agents and Multi-Agent Systems, Vol. 38(12), Springer, 2024. https://rdcu.be/dCAeY
