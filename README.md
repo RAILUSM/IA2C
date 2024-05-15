@@ -6,3 +6,5 @@ Keyang He, Bikramjit Banerjee, and Prashant Doshi. Cooperative-Competitive Reinf
 Also part of paper: 
 
 Keyang He, Prashant Doshi, and Bikramjit Banerjee. Modeling and reinforcement learning in partially observable many-agent systems. In Autonomous Agents and Multi-Agent Systems, Vol. 38(12), Springer, 2024. https://rdcu.be/dCAeY
+
+Actor-Critic network classes are in ac_nets.py. Code to test/use these classes are provided in a2c_test.py. IA2C code is in ia2c.py. 
