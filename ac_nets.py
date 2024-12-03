@@ -39,6 +39,10 @@ class NeuralNet(nn.Module):
         else:
             out = self.l3(out)
         return out
+
+def register_hooks(model, name):
+    for param in model.parameters():
+        param.register_hook(lambda grad: print(f'Gradients for {name} with shape {grad.shape}'))
     
 class CriticNetwork:
     def __init__(self, name, n_features, critic_actions, lr, cuda=False):
@@ -50,6 +54,9 @@ class CriticNetwork:
         self.optimizer = Adam(self.net.parameters(), lr=lr)
         self.cuda = cuda
         self.losses = []
+        self.name=name
+        #register_hooks(self.net, name)
+        self.critic_loss = np.inf
         
     def run_main(self, obs, grad=False): # (N_S X N_E X N_F) -->  (N_S X N_E X N_A)
         if not grad:
@@ -59,7 +66,7 @@ class CriticNetwork:
             out = self.net(obs)
         return out
     
-    def batch_update(self, obs, act, target, action_distribution=False): # (N_S X N_E X N_F), (N_S X N_E X 1), (N_S X N_E X 1)
+    def batch_update(self, obs, act, target, action_distribution=False): # (N_S X N_E X N_F), (N_S X N_E X 1/N_A), (N_S X N_E X 1)
         self.optimizer.zero_grad()
         Q = self.net.forward(obs) #(N_S X N_E X N_A)
         if not action_distribution:
@@ -69,6 +76,22 @@ class CriticNetwork:
         dot_prd = (Q*q_sel).sum(-1, keepdims=True) # (N_S X N_E X 1)
         loss = self.loss(target, dot_prd)
         loss.backward()
+        '''
+        print(f'Before {self.name}.backward:')
+        for name, param in self.net.named_parameters():
+            if param.grad is not None:
+                print(f'{name} grad: {param.grad.shape}')
+            #else:
+            #    print(f'{name} no-grad')
+        loss.backward() #retain_graph=True)
+        print(f'After {self.name}.backward:')
+        for name, param in self.net.named_parameters():
+            if param.grad is not None:
+                print(f'{name} grad: {param.grad.shape}')
+            #else:
+            #    print(f'{name} no-grad')
+        #loss.backward(retain_graph=False)
+        '''
         self.optimizer.step()
         if self.cuda:
             get_loss = loss.cpu().data.numpy()
@@ -90,6 +113,9 @@ class ActorNetwork:
         self.cuda = cuda
         self.beta = beta
         self.losses=[]
+        self.name=name
+        #register_hooks(self.net, name)
+        self.actor_loss = np.inf
 
     def sample_action(self, obs, grad=False): # (N_S X N_E X N_F) --> (N_S X N_E X 1)
         if not grad:
@@ -109,13 +135,33 @@ class ActorNetwork:
             out = self.net(obs)
         return out
         
-    def batch_update(self, obs, act, adv, retain=False):  # (N_S X N_E X N_F), (N_S X N_E X 1), (N_S X N_E X 1)
+    def batch_update(self, obs, act, adv, action_distribution=False):  # (N_S X N_E X N_F), (N_S X N_E X 1/N_A), (N_S X N_E X 1)
+        self.optimizer.zero_grad()
         dist = Categorical(probs=self.net.forward(obs))
-        neglogp = - dist.log_prob(act.squeeze(-1)).unsqueeze(-1)
-        pg_loss = adv * neglogp
+        if action_distribution:
+            #print("in act update:", adv.shape)
+            pg_loss = - adv #(adv.expand(-1,-1,self.num_outs) * act * act).sum(-1).unsqueeze(-1)
+        else:
+            neglogp = - dist.log_prob(act.squeeze(-1)).unsqueeze(-1)
+            pg_loss = adv * neglogp
         entropy = dist.entropy().unsqueeze(-1)
         loss = (pg_loss - self.beta*entropy).mean()
-        loss.backward(retain_graph=retain)
+        loss.backward()
+        '''
+        print(f'Before {self.name}.backward:')
+        for name, param in self.net.named_parameters():
+            if param.grad is not None:
+                print(f'{name} grad: {param.grad.shape}')
+            #else:
+            #    print(f'{name} no-grad')
+        loss.backward() #retain_graph=True)
+        print(f'After {self.name}.backward:')
+        for name, param in self.net.named_parameters():
+            if param.grad is not None:
+                print(f'{name} grad: {param.grad.shape}')
+            #else:
+            #    print(f'{name} no-grad')
+        '''
         self.optimizer.step()
         if self.cuda:
             get_loss = loss.cpu().data.numpy()
@@ -125,3 +171,4 @@ class ActorNetwork:
         if len(self.losses)>20:
             del self.losses[0]
         self.actor_loss = np.mean(self.losses)
+
